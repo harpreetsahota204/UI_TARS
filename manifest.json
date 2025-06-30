@@ -1,0 +1,32 @@
+{
+    "name": "UI-TARS-1.5",
+    "url": "https://github.com/harpreetsahota204/UI_TARS",
+    "models": [
+        {
+            "base_name": "ByteDance-Seed/UI-TARS-1.5-7B",
+            "base_filename":"UI-TARS-1.5-7B",
+            "author": "ByteDance",
+            "license": "Apache 2.0",
+            "source": "https://huggingface.co/ByteDance-Seed/UI-TARS-1.5-7B",
+            "description": "UI-TARS-1.5 is an open-source multimodal agent capable of effectively performing diverse tasks within virtual worlds.",
+            "tags": [
+                "detection",
+                "ocr",
+                "VLM",
+                "classification",
+                "zero-shot",
+                "visual-agent"
+            ],
+            "date_added": "2025-06-30",
+            "requirements": {
+                "packages": ["huggingface-hub","transformers", "torch", "torchvision", "qwen-vl-utils", "accelerate"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            }
+        }
+    ]
+}
