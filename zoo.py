@@ -603,7 +603,7 @@ class UITARSModel(SamplesMixin, Model):
             parsed_output = self._parse_json(output_text)
             return self._to_keypoints(parsed_output, original_width, original_height,
                                      model_width, model_height)
-        elif self.operation == "classification":
+        elif self.operation == "classify":
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
         elif self.operation == "agentic":
