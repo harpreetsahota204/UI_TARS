@@ -2,8 +2,6 @@
 
 A comprehensive integration of the UI-TARS vision-language model with FiftyOne for GUI agent development and analysis. UI-TARS is an end-to-end native GUI agent model that can perceive screenshots and perform human-like interactions through unified action modeling.
 
-## 🚀 Features
-
 - **Multi-Modal Operations**: Support for 5 different operation modes
 - **Unified Action Space**: Standardized actions across desktop, mobile, and web platforms  
 - **Advanced Reasoning**: System-2 thinking with explicit thought generation
@@ -27,9 +25,9 @@ model = foz.load_zoo_model(
     )
 ```
 
-## 📊 Quick Start
+## 👨🏽‍💻 Quick Start
 
-### 1. Load Your Dataset
+### Load Your Dataset
 
 ```python
 import fiftyone as fo
@@ -45,7 +43,7 @@ dataset = load_from_hub(
 # Launch FiftyOne App
 fo.launch_app(dataset)
 ```
-### 2. Basic Usage
+### Basic Usage
 
 #### Operation Modes
 
@@ -56,8 +54,6 @@ fo.launch_app(dataset)
 | **`point`** | Keypoint detection | Keypoints with actions | Action planning, element targeting |
 | **`classify`** | UI classification | Classifications | Platform detection, UI categorization |
 | **`agentic`** | Full agent actions | Keypoints with metadata | Complete automation workflows |
-
-
 
 
 ```python
@@ -77,7 +73,7 @@ model.prompt = "Identify clickable elements for navigation"
 dataset.apply_model(model, label_field="ui_keypoints")
 ```
 
-### 3. Advanced Agent Actions
+### Agent Actions
 
 ```python
 # Full agentic mode with reasoning
@@ -144,8 +140,6 @@ dataset.apply_model(model, prompt_field="task_instructions", label_field="agent_
 ```
 
 **Output**: Sequence of actions with coordinates, parameters, and reasoning
-
-## 🧠 Advanced Features
 
 ### Custom System Prompts
 
