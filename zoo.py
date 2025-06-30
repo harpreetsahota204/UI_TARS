@@ -332,9 +332,9 @@ class UITARSModel(SamplesMixin, Model):
         return (original_x / original_width, original_y / original_height)
 
     def _to_ocr_detections(self, parsed_output: Dict, original_width: int, original_height: int,
-                          model_width: int, model_height: int) -> fo.Detections:
-        """Convert OCR results to FiftyOne Detections."""
-        detections = []
+                          model_width: int, model_height: int) -> fo.Keypoints:
+        """Convert OCR results to FiftyOne Keypoints."""
+        keypoints = []
         
         # Handle the parsed JSON structure directly
         if isinstance(parsed_output, dict):
@@ -359,29 +359,19 @@ class UITARSModel(SamplesMixin, Model):
                 if not text:
                     continue
                 
-                # Create a small bounding box around the point for OCR detection
-                x, y = point
-                box_size = 0.02  # 2% of image size
-                bbox = [
-                    max(0, x - box_size/2),
-                    max(0, y - box_size/2),
-                    min(1, box_size),
-                    min(1, box_size)
-                ]
-                
-                detection_obj = fo.Detection(
+                keypoint = fo.Keypoint(
                     label=str(text_type),
-                    bounding_box=bbox,
+                    points=[list(point)],
                     text=str(text),
                     thought=thought
                 )
-                detections.append(detection_obj)
+                keypoints.append(keypoint)
                     
             except Exception as e:
                 logger.debug(f"Error processing OCR detection {detection}: {e}")
                 continue
                     
-        return fo.Detections(detections=detections)
+        return fo.Keypoints(keypoints=keypoints)
 
     def _to_keypoints(self, parsed_output: Dict, original_width: int, original_height: int,
                      model_width: int, model_height: int) -> fo.Keypoints:
@@ -503,7 +493,7 @@ class UITARSModel(SamplesMixin, Model):
                 
         return fo.Classifications(classifications=classifications)
         
-    def _predict(self, image: Image.Image, sample=None) -> Union[fo.Detections, fo.Keypoints, fo.Classifications, str]:
+    def _predict(self, image: Image.Image, sample=None) -> Union[fo.Keypoints, fo.Classifications, str]:
         """Process a single image through the model and return predictions.
         
         This internal method handles the core prediction logic including:
