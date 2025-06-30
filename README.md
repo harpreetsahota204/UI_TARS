@@ -10,16 +10,6 @@ A comprehensive integration of the UI-TARS vision-language model with FiftyOne f
 - **Precise Grounding**: State-of-the-art coordinate prediction and element localization
 - **FiftyOne Integration**: Seamless dataset management and visualization
 
-## 📋 Operation Modes
-
-| Mode | Description | Output Format | Use Cases |
-|------|-------------|---------------|-----------|
-| **`vqa`** | Visual Question Answering | Text response | UI description, analysis |
-| **`ocr`** | Text detection and recognition | Keypoints with text | Text extraction, element identification |
-| **`point`** | Keypoint detection | Keypoints with actions | Action planning, element targeting |
-| **`classify`** | UI classification | Classifications | Platform detection, UI categorization |
-| **`agentic`** | Full agent actions | Keypoints with metadata | Complete automation workflows |
-
 ## 🛠 Installation
 
 ```bash
