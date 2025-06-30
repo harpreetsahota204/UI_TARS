@@ -560,8 +560,7 @@ class UITARSModel(SamplesMixin, Model):
                     },
                     {
                         "type": "text", 
-                        "text": f"""## User Instruction
-                        {prompt}"""
+                        "text": prompt
                     },
                 ]
             }
