@@ -59,11 +59,11 @@ Always return your response as valid JSON wrapped in ```json blocks.
     "classifications": [
         {
             "thought": ...,
-            "label": "descriptive class label", // Short, descriptive, and precise
+            "label": "descriptive class label", ## Short, descriptive, and precise. Refer to your thought about the appropriate label.
         },
         {
             "thought": ...,
-            "label": "descriptive class label", // Short, descriptive, and precise
+            "label": "descriptive class label", ## Short, descriptive, and precise. Refer to your thought about the appropriate label.
         }
     ]
 }
@@ -83,17 +83,17 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
 {
     "text_detections": [
         {
-            "thought": ...,
+            "thought": ..., ## Think about the category this text belongs to
+            "text_category": ..., ## Refer to your thought about the appropriate category.
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
-            "text": "Exact text content found in this region",  // Transcribe text exactly as it appears
-            "text_category": <|box_start|>category<|box_end|> // Refer to your thought about the appropriate category.
+            "text": ## Transcribe text exactly as it appears
         }
     ]
 }
 ```
 """
 
-DEFAULT_VQA_SYSTEM_PROMPT = "You are a GUI agent. You provide clear and concise answerss to questions about images. Report answers in natural language text in English."
+DEFAULT_VQA_SYSTEM_PROMPT = "You are a GUI agent. You provide clear and concise answers to questions about any GUI. Report answers in natural language text in English."
 
 DEFAULT_AGENTIC_PROMPT = """You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
 
@@ -114,10 +114,10 @@ Return valid JSON in ```json blocks:
 {
     "keypoints": [
         {
-            "thought": "Brief analysis and reasoning",
-            "action": "action_name",
+            "thought": ..., ## think about the action space, additional parameters needed, and their values 
+            "action": ...,
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
-            "parameter_name": parameter_value
+            "parameter_name": ... ## Refer to your thought about addition parameters.
         }
     ]
 }
@@ -560,7 +560,8 @@ class UITARSModel(SamplesMixin, Model):
                     },
                     {
                         "type": "text", 
-                        "text": prompt
+                        "text": f"""## User Instruction
+                        {prompt}"""
                     },
                 ]
             }
