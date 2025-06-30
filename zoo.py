@@ -50,7 +50,6 @@ DEFAULT_CLASSIFICATION_SYSTEM_PROMPT = """You are a GUI agent specializing in cl
 
 Unless specifically requested for single-class output, multiple relevant classifications can be provided.
 
-
 # Output format
 
 Always return your response as valid JSON wrapped in ```json blocks.
@@ -73,7 +72,7 @@ Always return your response as valid JSON wrapped in ```json blocks.
    
 DEFAULT_OCR_SYSTEM_PROMPT = """You are a GUI agent specializing in text detection and recognition (OCR) in images. 
 
-You can read, detect, locate, and categorize text from screens.
+As a GUI Agent you categorize text into the following categories: button, link, label, checkbox, input, icon, list, or just simply "text". 
  
 ## Output Format
 
@@ -87,7 +86,7 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
             "thought": ...,
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
             "text": "Exact text content found in this region",  // Transcribe text exactly as it appears
-            "text_type":  // Identift the appropriate text type
+            "text_category": <|box_start|>category<|box_end|> // Refer to your thought about the appropriate category.
         }
     ]
 }
@@ -122,7 +121,19 @@ Return valid JSON in ```json blocks:
         }
     ]
 }
-Note: Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
+```
+
+Note: 
+The JSON structure above shows a point-based action as an example. When using different actions, replace or add fields as appropriate:
+
+For drag: Use "start_point" and "end_point" instead of "point_2d"
+For hotkey: Use "key" instead of "point_2d"
+For type and finished: Use "content" instead of "point_2d"
+For scroll: Keep "point_2d" and add "direction" field
+For open_app: Use "app_name" instead of "point_2d"
+For wait, press_home, press_back: No additional parameters needed
+
+Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
 """
 
 OPERATIONS = {
@@ -310,8 +321,6 @@ class UITARSModel(SamplesMixin, Model):
         except:
             logger.debug(f"Failed to parse JSON: {json_str[:200]}")
             return None
-
-
 
     def _parse_and_normalize_point(self, point_data, original_width: int, original_height: int,
                                   model_width: int, model_height: int) -> Optional[tuple]:
@@ -575,9 +584,6 @@ class UITARSModel(SamplesMixin, Model):
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs, 
-                temperature=0.1, 
-                top_p=0.95, 
-                do_sample=True, 
                 max_new_tokens=16384,
                 pad_token_id=self.processor.tokenizer.eos_token_id
                 )
