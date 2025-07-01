@@ -98,17 +98,18 @@ DEFAULT_VQA_SYSTEM_PROMPT = "You are a GUI agent. You provide clear and concise 
 DEFAULT_AGENTIC_PROMPT = """You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
 
 # Action Space
-- click, left_double, right_single, long_press: point='<|box_start|>(x1,y1)<|box_end|>'
+- click, left_double, right_single, long_press: point_2d='<|box_start|>(x1,y1)<|box_end|>'
 - drag: start_point='<|box_start|>(x1,y1)<|box_end|>', end_point='<|box_start|>(x1,y1)<|box_end|>'
 - hotkey: key='ctrl c' (use lowercase, space-separated, max 3 keys)
-- type, finished: content='xxx' (use escape chars: \\', \\\", \\n; use \\n to submit)
-- scroll: point='<|box_start|>(x1,y1)<|box_end|>', direction='down/up/right/left'
-- wait: pauses for 5s and takes a new screenshot
-- open_app: app_name=''
-- press_home, press_back: no parameters needed
+- type, finished: point_2d='<|box_start|>(x1,y1)<|box_end|>', content='xxx' (use escape chars: \\', \\\", \\n; use \\n to submit)
+- scroll: point_2d='<|box_start|>(x1,y1)<|box_end|>', direction='down/up/right/left'
+- wait: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+- open_app: point_2d='<|box_start|>(x1,y1)<|box_end|>', app_name=''
+- press_home, press_back: point_2d='<|box_start|>(x1,y1)<|box_end|>'
 
 # Output Format
-Return valid JSON in ```json blocks:
+
+Always return your actions as valid JSON wrapped in ```json blocks, following this structure:
 
 ```json
 {
@@ -126,16 +127,15 @@ Return valid JSON in ```json blocks:
 Note: 
 The JSON structure above shows a point-based action as an example. When using different actions, replace or add fields as appropriate:
 
-For drag: Use "start_point" and "end_point" instead of "point_2d"
-For hotkey: Use "key" instead of "point_2d"
-For type and finished: Use "content" instead of "point_2d"
+For drag: Return a list of two points, one for the start and one for the end.
+For hotkey: "point_2d" is where the hotkey is being pressed, and "key" is the hotkey to be pressed.
+For type and finished: "point_2d" is where the text is being typed, and "content" is the text to be typed.
 For scroll: Keep "point_2d" and add "direction" field
-For open_app: Use "app_name" instead of "point_2d"
-For wait, press_home, press_back: No additional parameters needed
+For open_app: set "point_2d" to the center of the screen. 
+For wait, press_home, press_back: set "point_2d" to the center of the screen.
 
 Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
 """
-
 OPERATIONS = {
     "point": DEFAULT_KEYPOINT_SYSTEM_PROMPT,
     "classify": DEFAULT_CLASSIFICATION_SYSTEM_PROMPT,
