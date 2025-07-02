@@ -100,14 +100,19 @@ DEFAULT_VQA_SYSTEM_PROMPT = "You are a GUI agent. You provide clear and concise 
 DEFAULT_AGENTIC_PROMPT = """You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
 
 # Action Space
-- click, left_double, right_single, long_press: point_2d='<|box_start|>(x1,y1)<|box_end|>'
-- drag: start_point='<|box_start|>(x1,y1)<|box_end|>', end_point='<|box_start|>(x1,y1)<|box_end|>'
-- hotkey: key='ctrl c' (use lowercase, space-separated, max 3 keys)
-- type, finished: point_2d='<|box_start|>(x1,y1)<|box_end|>', content='xxx' (use escape chars: \\', \\\", \\n; use \\n to submit)
-- scroll: point_2d='<|box_start|>(x1,y1)<|box_end|>', direction='down/up/right/left'
-- wait: point_2d='<|box_start|>(x1,y1)<|box_end|>'
-- open_app: point_2d='<|box_start|>(x1,y1)<|box_end|>', app_name=''
-- press_home, press_back: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+click: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+left_double: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+right_single: point_2d='<|box_start|>(x1,y1)<|box_end|>' 
+long_press: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+drag: Return a list of two points, one for the start and one for the end. point_2d='<|box_start|>(x1,y1)<|box_end|>', point_2d='<|box_start|>(x1,y1)<|box_end|>'
+hotkey: key='ctrl c'
+type: point_2d='<|box_start|>(x1,y1)<|box_end|>', content='xxx'
+finished: point_2d='<|box_start|>(x1,y1)<|box_end|>', content='xxx'
+scroll: point_2d='<|box_start|>(x1,y1)<|box_end|>', direction='down/up/right/left'
+wait: point_2d='<|box_start|>(x1,y1)<|box_end|>'
+open_app: point_2d='<|box_start|>(x1,y1)<|box_end|>', app_name=''
+press_home: set "point_2d" to the center of the screen point_2d='<|box_start|>(x1,y1)<|box_end|>'
+press_back: set "point_2d" to the center of the screen point_2d='<|box_start|>(x1,y1)<|box_end|>'
 
 # Output Format
 
@@ -120,21 +125,14 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
             "thought": ..., ## think about the action space, additional parameters needed, and their values 
             "action": ...,
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
-            "parameter_name": ... ## Refer to your thought about addition parameters.
+            "parameter_name": ... ## Refer to your thought about additional parameters.
         }
     ]
 }
 ```
 
 Note: 
-The JSON structure above shows a point-based action as an example. When using different actions, replace or add fields as appropriate:
-
-For drag: Return a list of two points, one for the start and one for the end.
-For hotkey: "point_2d" is where the hotkey is being pressed, and "key" is the hotkey to be pressed.
-For type and finished: "point_2d" is where the text is being typed, and "content" is the text to be typed.
-For scroll: Keep "point_2d" and add "direction" field
-For open_app: set "point_2d" to the center of the screen. 
-For wait, press_home, press_back: set "point_2d" to the center of the screen.
+When using different actions, replace or add fields as appropriate.
 
 Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
 """
@@ -486,6 +484,7 @@ class UITARSModel(SamplesMixin, Model):
         # Get original image dimensions
         original_width, original_height = image.size
         
+        
         messages = [
             {
                 "role": "system", 
@@ -535,19 +534,22 @@ class UITARSModel(SamplesMixin, Model):
         generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
         output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
+        # Get image dimensions and convert to float
+        input_height = float(inputs['image_grid_thw'][0][1].cpu() * 14)
+        input_width = float(inputs['image_grid_thw'][0][2].cpu() * 14)
         # Convert to appropriate FiftyOne format
         if self.operation == "ocr":
             parsed_output = self._parse_json(output_text)
-            return self._to_ocr_detections(parsed_output, original_width, original_height)
+            return self._to_ocr_detections(parsed_output, input_width, input_height)
         elif self.operation == "point":
             parsed_output = self._parse_json(output_text)
-            return self._to_keypoints(parsed_output, original_width, original_height)
+            return self._to_keypoints(parsed_output, input_width, input_height)
         elif self.operation == "classify":
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
         elif self.operation == "agentic":
             parsed_output = self._parse_json(output_text)
-            return self._to_agentic_keypoints(parsed_output, original_width, original_height)
+            return self._to_agentic_keypoints(parsed_output, input_width, input_height)
         else:
             return output_text
 
