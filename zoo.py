@@ -5,7 +5,7 @@ import json
 import math
 from PIL import Image
 from typing import Dict, Any, List, Union, Optional
-
+import re 
 import numpy as np
 import torch
 
@@ -72,7 +72,7 @@ Always return your response as valid JSON wrapped in ```json blocks.
    
 DEFAULT_OCR_SYSTEM_PROMPT = """You are a GUI agent. You specialize in text detection and recognition (OCR) in screenshots. 
 
-You will be given a screenshot and you will need to transcribe the text in this screenshot. 
+You will be given a screenshot and you will need to transcribe the words in this screenshot. 
 
 As a GUI Agent you categorize text in a screenshot into the following categories: button, link, label, checkbox, input, icon, list, or just simply "text". 
  
@@ -95,6 +95,8 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
     ]
 }
 ```
+
+Note:Do not read the same text element multiple times.
 """
 
 DEFAULT_VQA_SYSTEM_PROMPT = "You are a GUI agent. You provide clear and concise answers to questions about any GUI. Report answers in natural language text in English."
