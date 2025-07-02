@@ -534,23 +534,29 @@ class UITARSModel(SamplesMixin, Model):
         generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, output_ids)]
         output_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
 
+        
         # Get image dimensions and convert to float
         input_height = float(inputs['image_grid_thw'][0][1].cpu() * 14)
         input_width = float(inputs['image_grid_thw'][0][2].cpu() * 14)
         # Convert to appropriate FiftyOne format
         if self.operation == "ocr":
+            print(f"Raw Model output: {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_ocr_detections(parsed_output, input_width, input_height)
         elif self.operation == "point":
+            print(f"Raw Model output: {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_keypoints(parsed_output, input_width, input_height)
         elif self.operation == "classify":
+            print(f"Raw Model output: {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
         elif self.operation == "agentic":
+            print(f"Raw Model output: {output_text}")
             parsed_output = self._parse_json(output_text)
             return self._to_agentic_keypoints(parsed_output, input_width, input_height)
         else:
+            print(f"Raw Model output: {output_text}")
             return output_text
 
     def predict(self, image, sample=None):
