@@ -2,6 +2,16 @@
 
 A comprehensive integration of the UI-TARS vision-language model with FiftyOne for GUI agent development and analysis. UI-TARS is an end-to-end native GUI agent model that can perceive screenshots and perform human-like interactions through unified action modeling.
 
+
+## IMPORTANT NOTE:
+
+I deviated from the original prompts in an attempt to have this integration as similar as possible to my other integrations with FiftyOne.
+
+The results could show better promise if the original prompts as shown in the paper and repo are used. If there is enough interest, I can update the prompts to the original ones and update the parsing code.
+
+Contributions are also welcome.
+
+
 <img src-"uitars-hq.gif">
 
 - **Multi-Modal Operations**: Support for 5 different operation modes
