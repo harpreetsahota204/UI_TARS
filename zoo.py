@@ -70,9 +70,11 @@ Always return your response as valid JSON wrapped in ```json blocks.
 ```
 """
    
-DEFAULT_OCR_SYSTEM_PROMPT = """You are a GUI agent specializing in text detection and recognition (OCR) in images. 
+DEFAULT_OCR_SYSTEM_PROMPT = """You are a GUI agent. You specialize in text detection and recognition (OCR) in screenshots. 
 
-As a GUI Agent you categorize text into the following categories: button, link, label, checkbox, input, icon, list, or just simply "text". 
+You will be given a screenshot and you will need to transcribe the text in this screenshot. 
+
+As a GUI Agent you categorize text in a screenshot into the following categories: button, link, label, checkbox, input, icon, list, or just simply "text". 
  
 ## Output Format
 
@@ -136,6 +138,7 @@ For wait, press_home, press_back: set "point_2d" to the center of the screen.
 
 Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
 """
+
 OPERATIONS = {
     "point": DEFAULT_KEYPOINT_SYSTEM_PROMPT,
     "classify": DEFAULT_CLASSIFICATION_SYSTEM_PROMPT,
@@ -143,52 +146,6 @@ OPERATIONS = {
     "ocr": DEFAULT_OCR_SYSTEM_PROMPT,
     "agentic": DEFAULT_AGENTIC_PROMPT,
 }
-
-def round_by_factor(number: int, factor: int) -> int:
-    """Returns the closest integer to 'number' that is divisible by 'factor'."""
-    return round(number / factor) * factor
-
-
-def ceil_by_factor(number: int, factor: int) -> int:
-    """Returns the smallest integer greater than or equal to 'number' that is divisible by 'factor'."""
-    return math.ceil(number / factor) * factor
-
-
-def floor_by_factor(number: int, factor: int) -> int:
-    """Returns the largest integer less than or equal to 'number' that is divisible by 'factor'."""
-    return math.floor(number / factor) * factor
-
-
-def smart_resize(
-    height: int, width: int, factor: int = IMAGE_FACTOR, 
-    min_pixels: int = MIN_PIXELS, max_pixels: int = MAX_PIXELS
-) -> tuple[int, int]:
-    """
-    Rescales the image so that the following conditions are met:
-    1. Both dimensions (height and width) are divisible by 'factor'.
-    2. The total number of pixels is within the range ['min_pixels', 'max_pixels'].
-    3. The aspect ratio of the image is maintained as closely as possible.
-    """
-    if max(height, width) / min(height, width) > MAX_RATIO:
-        raise ValueError(
-            f"absolute aspect ratio must be smaller than {MAX_RATIO}, "
-            f"got {max(height, width) / min(height, width)}"
-        )
-    
-    h_bar = max(factor, round_by_factor(height, factor))
-    w_bar = max(factor, round_by_factor(width, factor))
-    
-    if h_bar * w_bar > max_pixels:
-        beta = math.sqrt((height * width) / max_pixels)
-        h_bar = floor_by_factor(height / beta, factor)
-        w_bar = floor_by_factor(width / beta, factor)
-    elif h_bar * w_bar < min_pixels:
-        beta = math.sqrt(min_pixels / (height * width))
-        h_bar = ceil_by_factor(height * beta, factor)
-        w_bar = ceil_by_factor(width * beta, factor)
-    
-    return h_bar, w_bar
-
 
 def get_device():
     if torch.cuda.is_available():
@@ -322,26 +279,23 @@ class UITARSModel(SamplesMixin, Model):
             logger.debug(f"Failed to parse JSON: {json_str[:200]}")
             return None
 
-    def _parse_and_normalize_point(self, point_data, original_width: int, original_height: int,
-                                  model_width: int, model_height: int) -> Optional[tuple]:
-        """Parse point, transform to original space, and normalize for FiftyOne."""
+    def _parse_and_normalize_point(self, 
+                                   point_data, 
+                                   image_width: int, 
+                                   image_height: int
+                                   ) -> Optional[tuple]:
+        """Parse point and normalize for FiftyOne."""
         model_coords = self._parse_point_2d(point_data)
         if not model_coords:
             return None
         
-        model_x, model_y = model_coords
-        
-        # Transform from model space to original image space
-        scale_x = original_width / model_width
-        scale_y = original_height / model_height
-        original_x = int(model_x * scale_x)
-        original_y = int(model_y * scale_y)
+        x, y = model_coords
         
         # Normalize to [0,1] for FiftyOne
-        return (original_x / original_width, original_y / original_height)
+        return (x / image_width, y / image_height)
 
-    def _to_ocr_detections(self, parsed_output: Dict, original_width: int, original_height: int,
-                          model_width: int, model_height: int) -> fo.Keypoints:
+
+    def _to_ocr_detections(self, parsed_output: Dict, image_width: int, image_height: int) -> fo.Keypoints:
         """Convert OCR results to FiftyOne Keypoints."""
         keypoints = []
         
@@ -355,14 +309,13 @@ class UITARSModel(SamplesMixin, Model):
             try:
                 # Parse and normalize point coordinates
                 point = self._parse_and_normalize_point(
-                    detection.get('point_2d'), original_width, original_height, 
-                    model_width, model_height
+                    detection.get('point_2d'), image_width, image_height
                 )
                 if not point:
                     continue
                 
                 text = detection.get('text', '')
-                text_type = detection.get('text_type', 'text')
+                text_type = detection.get('text_category', 'text')
                 thought = detection.get('thought', '')
                 
                 if not text:
@@ -382,8 +335,7 @@ class UITARSModel(SamplesMixin, Model):
                     
         return fo.Keypoints(keypoints=keypoints)
 
-    def _to_keypoints(self, parsed_output: Dict, original_width: int, original_height: int,
-                     model_width: int, model_height: int) -> fo.Keypoints:
+    def _to_keypoints(self, parsed_output: Dict, image_width: int, image_height: int) -> fo.Keypoints:
         """Convert keypoint detections to FiftyOne Keypoints."""
         keypoints = []
         
@@ -397,8 +349,7 @@ class UITARSModel(SamplesMixin, Model):
             try:
                 # Parse and normalize point coordinates
                 point = self._parse_and_normalize_point(
-                    kp.get('point_2d'), original_width, original_height,
-                    model_width, model_height
+                    kp.get('point_2d'), image_width, image_height
                 )
                 if not point:
                     continue
@@ -418,8 +369,7 @@ class UITARSModel(SamplesMixin, Model):
                 
         return fo.Keypoints(keypoints=keypoints)
     
-    def _to_agentic_keypoints(self, parsed_output: Dict, original_width: int, original_height: int,
-                             model_width: int, model_height: int) -> fo.Keypoints:
+    def _to_agentic_keypoints(self, parsed_output: Dict, image_width: int, image_height: int) -> fo.Keypoints:
         """Convert agentic actions to FiftyOne Keypoints."""
         keypoints = []
         
@@ -433,8 +383,7 @@ class UITARSModel(SamplesMixin, Model):
             try:
                 # Parse and normalize main point coordinates
                 point = self._parse_and_normalize_point(
-                    kp.get('point_2d'), original_width, original_height,
-                    model_width, model_height
+                    kp.get('point_2d'), image_width, image_height
                 )
                 if not point:
                     continue
@@ -455,8 +404,7 @@ class UITARSModel(SamplesMixin, Model):
                         if key == "end_point":
                             # Parse and normalize end point coordinates for drag actions
                             end_point = self._parse_and_normalize_point(
-                                value, original_width, original_height,
-                                model_width, model_height
+                                value, image_width, image_height
                             )
                             if end_point:
                                 metadata["end_point"] = list(end_point)
@@ -538,9 +486,6 @@ class UITARSModel(SamplesMixin, Model):
         # Get original image dimensions
         original_width, original_height = image.size
         
-        # Calculate model dimensions using smart_resize
-        model_height, model_width = smart_resize(original_height, original_width)
-        
         messages = [
             {
                 "role": "system", 
@@ -593,22 +538,18 @@ class UITARSModel(SamplesMixin, Model):
         # Convert to appropriate FiftyOne format
         if self.operation == "ocr":
             parsed_output = self._parse_json(output_text)
-            return self._to_ocr_detections(parsed_output, original_width, original_height, 
-                                          model_width, model_height)
+            return self._to_ocr_detections(parsed_output, original_width, original_height)
         elif self.operation == "point":
             parsed_output = self._parse_json(output_text)
-            return self._to_keypoints(parsed_output, original_width, original_height,
-                                     model_width, model_height)
+            return self._to_keypoints(parsed_output, original_width, original_height)
         elif self.operation == "classify":
             parsed_output = self._parse_json(output_text)
             return self._to_classifications(parsed_output)
         elif self.operation == "agentic":
             parsed_output = self._parse_json(output_text)
-            return self._to_agentic_keypoints(parsed_output, original_width, original_height,
-                                             model_width, model_height)
+            return self._to_agentic_keypoints(parsed_output, original_width, original_height)
         else:
             return output_text
-
 
     def predict(self, image, sample=None):
         """Process an image with the model.
