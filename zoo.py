@@ -76,6 +76,8 @@ You will be given a screenshot and you will need to transcribe the text in this 
 
 As a GUI Agent you categorize text in a screenshot into the following categories: button, link, label, checkbox, input, icon, list, or just simply "text". 
  
+Read each text element only once. Do not read the same text element multiple times.
+
 ## Output Format
 
 Always return your actions as valid JSON wrapped in ```json blocks, following this structure:
@@ -85,7 +87,7 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
 {
     "text_detections": [
         {
-            "thought": ..., ## Think about the category this text belongs to
+            "thought": ..., ## Think about the category this text belongs to and if you have already read it.
             "text_category": ..., ## Refer to your thought about the appropriate category.
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
             "text": ## Transcribe text exactly as it appears
@@ -116,13 +118,15 @@ press_back: set "point_2d" to the center of the screen point_2d='<|box_start|>(x
 
 # Output Format
 
+Thought: think about the action space, additional parameters needed, and their values 
+
 Always return your actions as valid JSON wrapped in ```json blocks, following this structure:
 
 ```json
 {
     "keypoints": [
         {
-            "thought": ..., ## think about the action space, additional parameters needed, and their values 
+            "thought": ..., #recall your thought about the action space, additional parameters needed, and their values 
             "action": ...,
             "point_2d": <|box_start|>(x1,y1)<|box_end|>,
             "parameter_name": ... ## Refer to your thought about additional parameters.
@@ -131,10 +135,7 @@ Always return your actions as valid JSON wrapped in ```json blocks, following th
 }
 ```
 
-Note: 
-When using different actions, replace or add fields as appropriate.
-
-Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
+Note: Include only parameters relevant to your chosen action. Keep thoughts in English and summarize your plan with the target element in one sentence.
 """
 
 OPERATIONS = {
@@ -255,28 +256,65 @@ class UITARSModel(SamplesMixin, Model):
                 return None
         return None
 
-    def _parse_json(self, s: str) -> Optional[Dict]:
-        """Parse JSON from model output."""
-        if not isinstance(s, str):
-            return s
+
+    def _parse_json(self, s: str) -> Dict:
+        """
+        Parse JSON from potentially truncated model output, auto-detecting structure.
         
+        Tries standard parsing first. If truncated, finds the first array key 
+        in the JSON and extracts complete objects from that array.
+        
+        Args:
+            s: Raw string containing JSON (may be in markdown blocks)
+            
+        Returns:
+            Complete JSON if valid, otherwise dict with the detected array key
+            containing any complete objects found before truncation.
+        """
         # Extract JSON content from markdown code blocks if present
         if "```json" in s:
-            try:
-                json_str = s.split("```json")[1].split("```")[0].strip()
-            except:
-                json_str = s
-        else:
-            json_str = s
-            
-        # Attempt to parse the JSON string
+            s = s.split("```json")[1].split("```")[0].strip()  # Get content between ```json and ``` markers
+        
+        # Try standard JSON parsing first - this handles complete, valid JSON
         try:
-            parsed_json = json.loads(json_str)
-            return parsed_json
+            return json.loads(s)  # Return immediately if parsing succeeds
         except:
-            logger.debug(f"Failed to parse JSON: {json_str[:200]}")
-            return None
-
+            pass  # If parsing fails, continue to recovery methods
+        
+        # Recovery method 1: Find the first array key pattern like "key_name": [
+        array_match = re.search(r'"([^"]+)":\s*\[', s)  # Regex to find array key
+        if not array_match:
+            return {"items": []}  # Return empty fallback structure if no array pattern found
+        
+        array_key = array_match.group(1)  # Extract the actual key name from regex match
+        
+        # Find the exact position where array content begins
+        array_pattern = f'"{array_key}": ['  # Reconstruct the exact pattern to search for
+        array_start = s.find(array_pattern) + len(array_pattern)  # Calculate start position of array content
+        array_content = s[array_start:]  # Extract just the array content portion
+        
+        # Recovery method 2: Extract complete JSON objects from the array by tracking nested braces
+        objects = []  # Will hold successfully parsed objects
+        depth = 0  # Track nesting level of braces
+        start = -1  # Position where current object starts
+        
+        for i, c in enumerate(array_content):
+            if c == '{':
+                if depth == 0:
+                    start = i  # Mark start of a new object
+                depth += 1  # Increase nesting level
+            elif c == '}':
+                depth -= 1  # Decrease nesting level
+                if depth == 0 and start >= 0:
+                    try:
+                        # Extract and parse complete object
+                        objects.append(json.loads(array_content[start:i+1]))  # Parse individual object
+                    except:
+                        pass  # Skip invalid objects
+        
+        # Return recovered objects with original key structure
+        return {array_key: objects}
+    
     def _parse_and_normalize_point(self, 
                                    point_data, 
                                    image_width: int, 
